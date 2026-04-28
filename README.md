@@ -170,7 +170,6 @@ To use your own config file:
 #### Environment Variables
 - `CRON_EXPRESSION`: Cron expression for scheduling (e.g. `"0 */6 * * *"` for every 6 hours)
 - `SLEEP_INTERVAL`: Ignored when cron is used; cron controls the schedule
-- `DOWNLOADS_DESTINATION`: Default download destination (default: `/downloads`)
 
 When `CRON_EXPRESSION` is set, the container starts cron and logs output to the container logs. Otherwise, it runs once and exits.
 

@@ -6,7 +6,7 @@ if [ -n "$CRON_EXPRESSION" ]; then
     cat > /etc/cron.d/rtve-job <<'EOF'
 SHELL=/bin/sh
 PATH=/usr/local/bin:/usr/bin:/bin
-$CRON_EXPRESSION root /usr/local/bin/python3 /app/script.py --config /app/config.txt >> /proc/1/fd/1 2>&1 --dest ${DOWNLOADS_DESTINATION:-/downloads}
+$CRON_EXPRESSION root /usr/local/bin/python3 /app/script.py --config /app/config.txt >> /proc/1/fd/1 2>&1 --dest /downloads
 EOF
     chmod 0644 /etc/cron.d/rtve-job
     echo "Starting cron daemon in foreground..."
