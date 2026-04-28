@@ -59,12 +59,12 @@ To enable this:
 ### Local Usage
 
 ```bash
-python script.py --config config.txt [--dest path]
+python script.py [--config config.txt] [--dest path]
 ```
 
 #### Options
 
-- `--config FILE`: Config file with lines of 'URL latest_count' (required)
+- `--config FILE`: Config file with lines of 'URL latest_count' (default: /app/config.txt in container, config.txt locally)
 - `--dest PATH`: Destination directory for downloads (default: current directory)
 
 #### Examples
@@ -83,7 +83,7 @@ Replace `rtve-scraper` with `ghcr.io/yourusername/rne3-podcast-scrapper:latest` 
 #### One-time Run
 Run once using the default config:
 ```bash
-docker run -v /host/path/to/downloads:/downloads rtve-scraper --config /app/config.txt
+docker run -v /host/path/to/downloads:/downloads rtve-scraper
 ```
 
 #### Custom Config File

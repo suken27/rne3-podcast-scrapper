@@ -12,5 +12,5 @@ services:
       CRON_EXPRESSION: "0 */6 * * *"  # Cron expression for every 6 hours
       # DEFAULT_DEST: /downloads
     # For one-time run (default):
-    command: ["--config", "/app/config.txt"]
+    # command: ["--config", "/app/config.txt"]
     # For scheduled run, remove the command line above and uncomment CRON_EXPRESSION

@@ -199,8 +199,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Download .mp3 files from RTVE audio pages.")
     parser.add_argument(
         "--config",
-        required=True,
-        help="Config file with lines of 'URL latest_count'",
+        default="/app/config.txt",
+        help="Config file with lines of 'URL latest_count' (default: /app/config.txt)",
     )
     parser.add_argument(
         "--dest",
