@@ -209,8 +209,23 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    print(f"Configuration:")
+    print(f"  Config file: {args.config}")
+    print(f"  Destination: {args.dest}")
+
     with open(args.config, 'r') as f:
         configs = [line.strip().split() for line in f if line.strip()]
+    
+    print(f"  Sources ({len(configs)}):")
+    for config in configs:
+        if len(config) >= 2:
+            url, latest = config[0], int(config[1])
+            print(f"    {url} -> latest {latest} episodes")
+        else:
+            print(f"    Invalid line: {' '.join(config)}")
+    
+    print("Starting downloads...")
+
     for config in configs:
         if len(config) >= 2:
             url, latest = config[0], int(config[1])
