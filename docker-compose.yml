@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  rtve-scraper:
+    image: rtve-scraper  # or ghcr.io/yourusername/rne3-podcast-scrapper:latest
+    container_name: rtve-scraper
+    volumes:
+      - ./downloads:/downloads  # Mount local downloads directory
+      # Uncomment and modify to override default config:
+      # - ./config.txt:/app/config.txt
+    environment:
+      # Uncomment for scheduled runs:
+      CRON_EXPRESSION: "0 */6 * * *"  # Cron expression for every 6 hours
+      # DEFAULT_DEST: /downloads
+    # For one-time run (default):
+    command: ["--config", "/app/config.txt"]
+    # For scheduled run, remove the command line above and uncomment CRON_EXPRESSION

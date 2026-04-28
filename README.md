@@ -93,7 +93,7 @@ docker run -v /host/path/to/downloads:/downloads -v $(pwd)/myconfig.txt:/app/con
 ```
 
 #### Scheduled Runs with Cron
-Run with cron scheduling inside the container (uses the default config.txt):
+Run with scheduling inside the container (uses the default config.txt):
 ```bash
 docker run -d \
   -v /host/path/to/downloads:/downloads \
@@ -102,11 +102,76 @@ docker run -d \
 ```
 
 **Environment Variables:**
-- `CRON_EXPRESSION`: Cron expression for scheduling (e.g., `"0 * * * *"` for hourly)
+- `CRON_EXPRESSION`: Cron expression for scheduling (e.g. `"0 */6 * * *"` for every 6 hours)
+- `SLEEP_INTERVAL`: Ignored when cron is used; cron controls schedule
 
-When `CRON_EXPRESSION` is set, the container runs cron and executes the script on schedule using the default config.txt. Otherwise, it runs once and exits.
+When `CRON_EXPRESSION` is set, the container starts cron and logs job output to container logs. Otherwise, it runs once and exits.
 
 **Important:** The `--dest` path must be within a mounted volume to persist downloads outside the container.
+
+### Docker Compose Usage
+
+Using Docker Compose provides a more convenient way to manage volumes and environment variables.
+
+Create a `docker-compose.yml` file in your project directory:
+
+```yaml
+version: '3.8'
+
+services:
+  rtve-scraper:
+    image: rtve-scraper  # or ghcr.io/yourusername/rne3-podcast-scrapper:latest
+    container_name: rtve-scraper
+    volumes:
+      - ./downloads:/downloads  # Mount local downloads directory
+      # Uncomment to override default config:
+      # - ./config.txt:/app/config.txt
+    environment:
+      # Uncomment for scheduled runs:
+      # CRON_EXPRESSION: "0 */6 * * *"  # Cron expression for every 6 hours
+      # SLEEP_INTERVAL: 21600  # Sleep interval in seconds (default: 21600 = 6 hours)
+    # For one-time run (default):
+    command: ["--config", "/app/config.txt"]
+    # For scheduled run, remove command and uncomment CRON_EXPRESSION
+```
+
+**Note:** Update the `image` to use the pre-built image or build locally with `docker-compose build`.
+
+1. Create a local `downloads` directory:
+   ```bash
+   mkdir downloads
+   ```
+
+#### One-time Run with Docker Compose
+```bash
+docker-compose up
+```
+
+#### Scheduled Run with Docker Compose
+Edit `docker-compose.yml` to uncomment `CRON_EXPRESSION` and set a cron expression, then run:
+```bash
+docker-compose up -d
+```
+
+The container will run continuously under cron, with logs visible via `docker-compose logs -f`.
+
+#### Custom Config with Docker Compose
+To use your own config file:
+1. Create your `config.txt` in the project directory
+2. Uncomment the config volume mount in `docker-compose.yml`:
+   ```yaml
+   volumes:
+     - ./downloads:/downloads
+     - ./config.txt:/app/config.txt
+   ```
+3. Run: `docker-compose up`
+
+#### Environment Variables
+- `CRON_EXPRESSION`: Cron expression for scheduling (e.g. `"0 */6 * * *"` for every 6 hours)
+- `SLEEP_INTERVAL`: Ignored when cron is used; cron controls the schedule
+- `DEFAULT_DEST`: Default download destination (default: `/downloads`)
+
+When `CRON_EXPRESSION` is set, the container starts cron and logs output to the container logs. Otherwise, it runs once and exits.
 
 ## Output Structure
 
