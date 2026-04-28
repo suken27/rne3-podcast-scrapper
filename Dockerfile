@@ -19,7 +19,6 @@ RUN pip install --no-cache-dir \
 # Copy the script and entrypoint
 COPY script.py .
 COPY entrypoint.sh .
-COPY config.txt .
 
 # Make entrypoint executable
 RUN chmod +x entrypoint.sh
