@@ -83,13 +83,13 @@ Replace `rtve-scraper` with `ghcr.io/yourusername/rne3-podcast-scrapper:latest` 
 #### One-time Run
 Run once using the default config:
 ```bash
-docker run -v /host/path/to/downloads:/downloads rtve-scraper
+docker run -v /host/path/to/downloads:/downloads -e DEFAULT_DEST=/downloads rtve-scraper
 ```
 
 #### Custom Config File
 Mount your own config file:
 ```bash
-docker run -v /host/path/to/downloads:/downloads -v $(pwd)/myconfig.txt:/app/config.txt rtve-scraper --config /app/config.txt
+docker run -v /host/path/to/downloads:/downloads -v $(pwd)/myconfig.txt:/app/config.txt -e DEFAULT_DEST=/downloads rtve-scraper --config /app/config.txt
 ```
 
 #### Scheduled Runs with Cron
@@ -98,6 +98,7 @@ Run with scheduling inside the container (uses the default config.txt):
 docker run -d \
   -v /host/path/to/downloads:/downloads \
   -e CRON_EXPRESSION="0 */6 * * *" \
+  -e DEFAULT_DEST=/downloads \
   rtve-scraper
 ```
 
@@ -107,7 +108,7 @@ docker run -d \
 
 When `CRON_EXPRESSION` is set, the container starts cron and logs job output to container logs. Otherwise, it runs once and exits.
 
-**Important:** The `--dest` path must be within a mounted volume to persist downloads outside the container.
+**Important:** The `--dest` path must be within a mounted volume to persist downloads outside the container. The `DEFAULT_DEST` environment variable is set to `/downloads` in the Docker Compose setup.
 
 ### Docker Compose Usage
 
@@ -169,7 +170,7 @@ To use your own config file:
 #### Environment Variables
 - `CRON_EXPRESSION`: Cron expression for scheduling (e.g. `"0 */6 * * *"` for every 6 hours)
 - `SLEEP_INTERVAL`: Ignored when cron is used; cron controls the schedule
-- `DEFAULT_DEST`: Default download destination (default: `/downloads`)
+- `DOWNLOADS_DESTINATION`: Default download destination (default: `/downloads`)
 
 When `CRON_EXPRESSION` is set, the container starts cron and logs output to the container logs. Otherwise, it runs once and exits.
 
