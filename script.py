@@ -13,7 +13,7 @@ from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
-from mutagen.id3 import ID3, TIT2, TPE1, TALB, TDRC, TRCK
+from mutagen.id3 import ID3, TIT2, TPE1, TALB, TDRC, TRCK, APIC, TCON, COMM
 from mutagen.mp3 import MP3
 
 
@@ -61,7 +61,27 @@ def download_mp3(url: str, filepath: Path) -> bool:
         return False
 
 
-def add_metadata(filepath: Path, title: str, artist: str, album: str, date: str) -> None:
+def clean_cover_image_url(url: str) -> str:
+    return url.split('?', 1)[0]
+
+
+def download_image(url: str, filepath: Path) -> bool:
+    try:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+            "Accept": "image/*,*/*;q=0.8",
+            "Referer": "https://www.rtve.es/play/audios/turbo-3/",
+        }
+        response = requests.get(clean_cover_image_url(url), headers=headers, timeout=30, allow_redirects=True)
+        response.raise_for_status()
+        filepath.write_bytes(response.content)
+        return True
+    except Exception as e:
+        print(f"Error downloading image {url}: {e}")
+        return False
+
+
+def add_metadata(filepath: Path, title: str, artist: str, album: str, date: str, image_url: str = "", duration: str = "") -> None:
     try:
         audio = MP3(filepath, ID3=ID3)
         if audio.tags is None:
@@ -69,15 +89,34 @@ def add_metadata(filepath: Path, title: str, artist: str, album: str, date: str)
         audio.tags.add(TIT2(encoding=3, text=title))
         audio.tags.add(TPE1(encoding=3, text=artist))
         audio.tags.add(TALB(encoding=3, text=album))
+        audio.tags.add(TCON(encoding=3, text="Podcast"))
+        if duration:
+            audio.tags.add(COMM(encoding=3, lang='eng', desc='Duration', text=duration))
         if date:
-            # Parse date to YYYY
+            # Parse date to YYYY-MM-DD
             try:
                 parts = date.split('/')
                 if len(parts) == 3:
-                    year = int(parts[2])
-                    audio.tags.add(TDRC(encoding=3, text=str(year)))
+                    day, month, year = map(int, parts)
+                    iso_date = f"{year:04d}-{month:02d}-{day:02d}"
+                    audio.tags.add(TDRC(encoding=3, text=iso_date))
             except ValueError:
                 pass
+        
+        # Add cover image if available
+        if image_url:
+            try:
+                response = requests.get(image_url, timeout=10)
+                response.raise_for_status()
+                image_data = response.content
+                mime_type = response.headers.get('content-type', 'image/jpeg')
+                if not mime_type.startswith('image/'):
+                    mime_type = 'image/jpeg'
+                audio.tags.add(APIC(encoding=3, mime=mime_type, type=3, desc='Cover', data=image_data))
+                print(f"Cover image added from {image_url}")
+            except Exception as e:
+                print(f"Error downloading cover image from {image_url}: {e}")
+        
         audio.save()
         print(f"Metadata added to {filepath}")
     except Exception as e:
@@ -95,6 +134,8 @@ def parse_audio_items(html_content: str, base_url: str) -> list[dict[str, str]]:
             "podcast_title": "",
             "episode_title": "",
             "mp3_url": "",
+            "image_url": "",
+            "duration": "",
         }
 
         share_tag = li.find(attrs={"data-share": True})
@@ -133,10 +174,19 @@ def parse_audio_items(html_content: str, base_url: str) -> list[dict[str, str]]:
         if date_tag:
             item["date"] = date_tag.get_text(strip=True)
 
+        duration_tag = li.select_one(".duration")
+        if duration_tag:
+            item["duration"] = duration_tag.get_text(strip=True)
+
         if not item["mp3_url"]:
             for match in re.findall(r'https?://[^"\'\s<>\&]+?\.mp3', str(li), flags=re.IGNORECASE):
                 item["mp3_url"] = match
                 break
+
+        # Extract image URL
+        img_tag = li.select_one("img.i_back")
+        if img_tag:
+            item["image_url"] = img_tag.get("src", "")
 
         if item["mp3_url"] and item["mp3_url"] not in seen_urls:
             seen_urls.add(item["mp3_url"])
@@ -147,6 +197,19 @@ def parse_audio_items(html_content: str, base_url: str) -> list[dict[str, str]]:
 
 def process_url(url: str, latest: int | None, dest: str) -> None:
     page_html = fetch_page(url)
+    soup = BeautifulSoup(page_html, "html.parser")
+    
+    # Extract artist from character span
+    artist_tag = soup.select_one(".character")
+    page_artist = artist_tag.get_text(strip=True) if artist_tag else ""
+
+    # Extract page-level cover image outside episode list
+    page_cover_url = ""
+    for img in soup.select("img.i_back"):
+        if not img.find_parent("li", class_="elem_"):
+            page_cover_url = img.get("src", "")
+            break
+    
     items = parse_audio_items(page_html, url)
 
     if latest is not None:
@@ -168,6 +231,15 @@ def process_url(url: str, latest: int | None, dest: str) -> None:
         folder = Path(dest) / podcast
         folder.mkdir(parents=True, exist_ok=True)
 
+        cover_path = folder / "cover.jpg"
+        if not cover_path.exists():
+            cover_image_url = page_cover_url or next((item.get("image_url", "") for item in episodes if item.get("image_url")), "")
+            if cover_image_url:
+                if download_image(cover_image_url, cover_path):
+                    print(f"Saved cover image to {cover_path}")
+                else:
+                    print(f"Failed to save cover image for {podcast}")
+
         for item in episodes:
             date_str = parse_date_for_filename(item.get("date", ""))
             filename = f"{date_str}.mp3"
@@ -186,10 +258,12 @@ def process_url(url: str, latest: int | None, dest: str) -> None:
             if download_mp3(mp3_url, filepath):
                 # Add metadata
                 title = item.get("episode_title", "")
-                artist = item.get("podcast_title", "")
+                artist = page_artist or item.get("podcast_title", "")
                 album = item.get("podcast_title", "")
                 date = item.get("date", "")
-                add_metadata(filepath, title, artist, album, date)
+                image_url = item.get("image_url", "")
+                duration = item.get("duration", "")
+                add_metadata(filepath, title, artist, album, date, image_url, duration)
                 print(f"Downloaded and tagged {filepath}")
             else:
                 print(f"Failed to download {filename}")
