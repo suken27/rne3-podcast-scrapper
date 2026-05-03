@@ -61,7 +61,7 @@ def download_mp3(url: str, filepath: Path) -> bool:
         return False
 
 
-def clean_cover_image_url(url: str) -> str:
+def clean_image_url(url: str) -> str:
     return url.split('?', 1)[0]
 
 
@@ -72,7 +72,7 @@ def download_image(url: str, filepath: Path) -> bool:
             "Accept": "image/*,*/*;q=0.8",
             "Referer": "https://www.rtve.es/play/audios/turbo-3/",
         }
-        response = requests.get(clean_cover_image_url(url), headers=headers, timeout=30, allow_redirects=True)
+        response = requests.get(clean_image_url(url), headers=headers, timeout=30, allow_redirects=True)
         response.raise_for_status()
         filepath.write_bytes(response.content)
         return True
@@ -186,7 +186,7 @@ def parse_audio_items(html_content: str, base_url: str) -> list[dict[str, str]]:
         # Extract image URL
         img_tag = li.select_one("img.i_back")
         if img_tag:
-            item["image_url"] = img_tag.get("src", "")
+            item["image_url"] = clean_image_url(img_tag.get("src", ""))
 
         if item["mp3_url"] and item["mp3_url"] not in seen_urls:
             seen_urls.add(item["mp3_url"])
